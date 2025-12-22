@@ -54,7 +54,7 @@ opts.flag.print_measured_time = 0;
 x = msh.POS(:,1); y = msh.POS(:,2); z = msh.POS(:,3); % get mesh coordinates
 % Plot results
 figure
-trisurf(msh.TRIANGLES(:,1:3),x,y,z,abs(out.field.Az)); view(2);
+trisurf(msh.TRIANGLES(:,1:3),x,y,z,abs(out.field.Az)); view(2); axis equal;
 xlabel('x (m)'), ylabel('y (m)'); zlabel('Az'), colorbar;
 f = gcf; colormap(f,ap.map.red_white_blue); 
 
@@ -90,6 +90,7 @@ t_plot = 0.2+10E-3; w = 2*pi*opts.freq;
 vec = out.field.Az; 
 Azt = abs(vec).*sin(w*t_plot+angle(vec));
 trisurf(msh.TRIANGLES(:,1:3),x,y,z,Azt,edgecolor='none');
+axis equal;
 xplot = [-5 6]; yplot = [10 18];
 xlim(xplot); ylim(yplot);
 view(2); colorbar;
@@ -157,7 +158,7 @@ disp(table([A_iph1;A_iph2;A_iph3;A_p],'RowNames',{'Line 1','Line 2','Line 3','Pi
 %% Inverse Laplace
 % before executing: gmsh .\mesh\mesh_corridor.geo
 utils_FEM
-addpath("796_matlab\")
+addpath(".\src\796_matlab\")
 help lapinv_796
 
 % HANDLE FUNCTION of source term, for FEM(s)

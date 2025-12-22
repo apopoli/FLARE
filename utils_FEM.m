@@ -4,6 +4,7 @@ compar_mat = @(sparse_mat_1,sparse_mat_2) fprintf('Max difference is %g\n',max(m
 amplitude = @(x) (max(x)-min(x))/2;
 
 addpath("src\");
+addpath("src\796_matlab\");
 addpath("sources\");
 addpath("mesh\");
 
