@@ -143,10 +143,11 @@ lgd.NumColumns = 2;
 xlabel('t (s)');
 ylabel('Current (A)');
 
+npp = 50;
+
 % amplitude of waveforms
 I_scaled = out.scal.I(:,end-npp:end)/8.6062;
 
-npp = 50;
 A_iph1 = amplitude(I_scaled(1,:));
 A_iph2 = amplitude(I_scaled(2,:));
 A_iph3 = amplitude(I_scaled(3,:));
