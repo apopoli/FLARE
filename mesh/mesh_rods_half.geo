@@ -1,6 +1,7 @@
 // Parametri
-L = 0.1; // larghezza
-H = 0.02; // altezza
+L = 0.07; // larghezza
+H = 0.01; // altezza
+H_edge = 3*H; // altezza bordo superiore
 d = 0.006; // distanza tra gli elettrodi
 
 r = 0.0015; // raggio di arrotondamento (0 < r < min(L/2, H))
@@ -10,12 +11,15 @@ lms = 0.001/2; // lunghezza mesh
 x0 = -(L+d/2); // origine x
 y0 = 0; // origine y
 
+// centrare tutto nell'origine
+x0 = -(L+d/2); // origine x
+y0 = 0; // origine y
+
+p0 = newp;
+Point(p0) = {x0, y0+H_edge, 0, lms*5};
+
 p1 = newp;
 Point(p1) = {x0, y0+H, 0, lms*3};
-p2 = newp;
-Point(p2) = {x0, y0, 0, lms*3};
-p3 = newp;
-Point(p3) = {x0+L, y0, 0, lms*3};
 
 xp1 = x0+L-r; yp1 = y0+H;
 pc11 = newp;
@@ -29,21 +33,41 @@ pc10 = newp;
 Point(pc10) = {xp2-r,yp1-r, 0, lms};
 Circle(1) = {pc12, pc10, pc11};
 
-//+
-Line(2) = {1, 4};
-//+
-Line(3) = {5, 3};
-//+
-Line(4) = {3, 2};
-//+
-Line(5) = {2, 1};
+p2 = newp;
+Point(p2) = {x0+L, y0, 0, lms};
 
+Symmetry {1, 0, 0, 0} {
+  Duplicata { Point{p0}; Point{p1}; Point{pc11}; Point{pc12}; Point{pc10}; Point{p2}; Curve{1}; }
+}
 //+
-Curve Loop(1) = {2, -1, 3, 4, 5};
+Line(3) = {1, 2};
+//+
+Line(4) = {2, 3};
+//+
+Line(5) = {4, 6};
+//+
+Line(6) = {6, 12};
+//+
+Line(7) = {12, 10};
+//+
+Line(8) = {9, 8};
+//+
+Line(9) = {8, 7};
+//+
+Line(10) = {7, 1};
+//+
+Curve Loop(1) = {10, 3, 4, -1, 5, 6, 7, 2, 8, 9};
 //+
 Plane Surface(1) = {1};
-
 //+
-Symmetry {1, 0, 0, 0} {
-  Duplicata { Point{1}; Point{2}; Point{3}; Point{4}; Point{5}; Point{6}; Curve{1}; Curve{2}; Curve{3}; Curve{4}; Curve{5}; Surface{1}; }
-}
+Physical Curve("pos", 11) = {4, 1, 5};
+//+
+Physical Curve("neg", 12) = {7, 2, 8};
+//+
+Physical Curve("symm", 13) = {3, 10, 9, 6};
+
+// MESH 2D
+Mesh 2;
+Mesh.MshFileVersion = 2;
+
+Save "mesh_rods.m";
