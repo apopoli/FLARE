@@ -5,7 +5,7 @@ H_edge = 3*H; // altezza bordo superiore
 d = 0.006; // distanza tra gli elettrodi
 
 r = 0.0015; // raggio di arrotondamento (0 < r < min(L/2, H))
-lms = 0.001/2; // lunghezza mesh
+lms = 0.001/4; // lunghezza mesh
 
 // centrare tutto nell'origine
 x0 = -(L+d/2); // origine x
@@ -60,14 +60,17 @@ Curve Loop(1) = {10, 3, 4, -1, 5, 6, 7, 2, 8, 9};
 //+
 Plane Surface(1) = {1};
 //+
-Physical Curve("pos", 11) = {4, 1, 5};
+Physical Curve(11) = {4, 1, 5};
 //+
-Physical Curve("neg", 12) = {7, 2, 8};
+Physical Curve(12) = {7, 2, 8};
 //+
-Physical Curve("symm", 13) = {3, 10, 9, 6};
+Physical Curve(13) = {3, 10, 9, 6};
+
+Physical Surface(1) = {1};
 
 // MESH 2D
 Mesh 2;
 Mesh.MshFileVersion = 2;
 
-Save "mesh_rods.m";
+Save "mesh_rods_half.m";
+

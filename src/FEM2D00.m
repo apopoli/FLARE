@@ -1,4 +1,4 @@
-function [out] = FEM2D00(opts, p, tri, edgeBound, bcflag_e, bcval_e, ireg, iregbe, materials, source)
+function [out] = FEM2D00(msh, opts, p, tri, edgeBound, BC, ireg, iregbe, materials, source)
 %FEM2D Finite element solution of div(prop(x,y) grad(phi)) = source(x,y)
 % material(id_phys_reg) = MaterialKind assigned to the region id_phys_reg
 
@@ -15,20 +15,15 @@ sigma = zeros(nt,1);
 
 % Field_e = zeros(nt,2);
 
-BCflag_p = zeros(np,1); % init. flags for BC type on nodes
-BCval_p = zeros(np,1); % values for BC on nodes
+BCval_p = set_BCs_on_nodes(msh, BC);
+bcflag_e = BC.bcflag_e;
 
-EdgeNeumann = find(bcflag_e == 2);
+EdgeNeumann = find(bcflag_e == 1);
 dp = p(edgeBound(EdgeNeumann,1),:) - p(edgeBound(EdgeNeumann,2),:);
 L = (dp(:,1).^2 + dp(:,2).^2).^0.5;
 
-% homogeneous Dirichlet BCs, regardless of input
-ipc = unique(edgeBound);
-BCflag_p(ipc) = 2;
-BCval_p(ipc) = 0.0;
-
 % Indexes for BCs
-ii_BCflag_p_2 = find(BCflag_p == 2); % Dirichlet nodes indices (corresponds to ipc)
+ii_BCflag_p_2 = find(BCval_p(:,2) == 2); % Dirichlet nodes indices (corresponds to ipc)
 ind_lin_p_2 = sub2ind([np np],ii_BCflag_p_2,ii_BCflag_p_2); % linear indexes of Dirichlet nodes, must be forced to 1 in Kg
 
 % cell array with regions
@@ -83,13 +78,24 @@ prop_el = prop_el * 1/3*src.*Area;
 
 RHSg =  K_rhs * prop_el;
 
-% set BC
+% ---- Neumann BCs ----
+for k = 1:length(EdgeNeumann)
+    e  = EdgeNeumann(k);
+    n1 = edgeBound(e,1);
+    n2 = edgeBound(e,2);
+
+    g  = BC.bcval_e(e);
+    Le = L(k);
+
+    RHSg(n1) = RHSg(n1) + g * Le / 2;
+    RHSg(n2) = RHSg(n2) + g * Le / 2;
+end
+
+% ---- Dirichlet BCs ----
 Kg(ii_BCflag_p_2,:) = 0;
 Kg(ind_lin_p_2) = 1;
-RHSg(ii_BCflag_p_2) = BCval_p(ii_BCflag_p_2);
+RHSg(ii_BCflag_p_2) = BCval_p(ii_BCflag_p_2,3);
 
-
-% spparms('spumoni',2)
 phi = Kg\RHSg;
 
 %% POST PROCESSING
@@ -103,37 +109,12 @@ v_sp_y = reshape(gradN_y', [], 1);
 Mat_grdn_x = sparse(ii_sp,jj_sp,v_sp_x,nt,np);
 Mat_grdn_y = sparse(ii_sp,jj_sp,v_sp_y,nt,np);
 
-% MATLAB
-% esempio elemento terreno (regione 6): 1
-% ireg(1) % -> suolo
-% tri(1,:) % -> coincide con F90
-% p(tri(1,1),:) % -> coordinate coincidono con F90
-% phi(tri(1,1)) = 1.4061e-27
-
-% F90:
-%  elemento=1 indice=1 sigma=1.000000000000000E-002
-%  x  0.381449414800000      y -0.285557998700000
-%  Az(j) (5.103291820909590E-028,0.000000000000000E+000)
-%---------------------------------------------------------------------
-
-% MATLAB
-% esempio elemento pipeline (regione 7): 59857
-% ireg(59857)
-% phi(tri(ii_pipe(1),1)) = -1.0341e-32
-
-% F90:
-%  nt =            1 /         200
-%  elemento       59857 indice           1 sigma   5500000.00000000
-%  x   2.00000000000000      y -0.600000000000000
-%  Az(j) (-1.034077284432769E-032,0.000000000000000E+000)
-%---------------------------------------------------------------------
-
-IntSource_AP = zeros(ndom,1);
+IntSource = zeros(ndom,1);
 for i = 1:ndom
-    IntSource_AP(i) = dot(src(el_ireg{i}),Area(el_ireg{i})); % integral source J0
+    IntSource(i) = dot(src(el_ireg{i}),Area(el_ireg{i})); % integral source J0
     for j = 1:3
         dA_dt = j_omega*phi(tri(el_ireg{i}));
-        IntSource_AP(i) = IntSource_AP(i) - dot(sigma(el_ireg{i}),dA_dt.*Area(el_ireg{i})/3); % integral source dA/dt sum((sigma(el_ireg{i}).*dA_dt).* Area(el_ireg{i})/3); 
+        IntSource(i) = IntSource(i) - dot(sigma(el_ireg{i}),dA_dt.*Area(el_ireg{i})/3); % integral source dA/dt sum((sigma(el_ireg{i}).*dA_dt).* Area(el_ireg{i})/3); 
     end
 end
 
@@ -185,8 +166,25 @@ switch opts.ProblemKind
         field.Hx = gradphi_prop_y/mu0; % magnetic field Hx
         field.Hy = -gradphi_prop_x/mu0; % magnetic field Hy
         field.Jz = Jz_p; % current density Jz
-        scal.I = IntSource_AP; % current in each region
+        scal.I = IntSource; % current in each region
 end
+
+% compute and draw field lines
+idx = find(BCval_p(:,2)==2 & BCval_p(:,3)==250);
+% start_pts = msh.POS(idx(1:10:end),1:2);
+start_pts = msh.POS(idx(50:10:100),1:2);
+
+lines = compute_fieldlines(msh, ...
+    field.Ex, field.Ey, start_pts);
+
+hold on
+for k = 1:length(lines)
+    if isempty(lines{k}), continue, end
+    plot(lines{k}.x, lines{k}.y, 'b', 'LineWidth',1.2)
+end
+axis equal
+
+error('stop here');
 
 out.field = field;
 if (exist('scal','var'))

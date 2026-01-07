@@ -1,33 +1,35 @@
-%% unit circle
-% before executing: gmsh .\mesh\mesh_unit_circle.geo
+clear variables
+close all
+
+%% facing rods
+% before executing: gmsh .\mesh\mesh_rods_half.geo
 utils_FEM;
 % MESH
-mesh_unit_circle; ndom = num_regions(msh);
+mesh_rods_half; ndom = num_regions(msh);
 % BC (Dirichlet)
-opts.tag_boundary = 1; % domain boundary on edges marked with tag=1 in mesh files
+BC.D.tag = [11,12];
+BC.D.val = [1,0]*250;
+BC.N.tag = 13;
+BC.N.val = 0;
 % materials
-[opts.materials] = set_materials('mesh_unit_circle',ndom);
+[opts.materials] = set_materials('mesh_unit_circle',ndom); % borrow from unit_circle example
 % PROBLEM KIND
 opts.ProblemKind = 'Electrostatic'; % [Electrostatic][Magnetostatic][QMagnetostaticSin][MagTimeDependent]
-opts.source = 1;
+opts.source = 0;
 % DIAGNOSTICS
 opts.flag.print_measured_time = 0; 
 
 % solution
-[out] = fesolve(msh,opts);
+[out] = fesolve(msh,BC,opts);
 
-out.field.phi = out.field.phi*8.8541878128E-12; % scaling
 x = msh.POS(:,1); y = msh.POS(:,2); % get mesh coordinates
-% Plot result
+
+% Plot potential
 figure
 trisurf(msh.TRIANGLES(:,1:3),x,y,out.field.phi,out.field.phi,edgecolor='none')
-xlabel('x (m)'), ylabel('y (m)'); zlabel('solution - \phi'), axis tight;
+xlabel('x (m)'), ylabel('y (m)'); zlabel('solution - \phi'), axis tight; axis equal; view(2); colorbar;
 ax = gca; ax.FontSize = 12;
 f = gcf; colormap(f,ap.map.red_white_blue);
 
-% Error with respect to analytical solution
 figure
-sol_e = (1 - x.^2 - y.^2)/4; % Whiteley p.52
-trisurf(msh.TRIANGLES(:,1:3),x,y,(out.field.phi-sol_e),(out.field.phi-sol_e),edgecolor='none')
-xlabel('x (m)'), ylabel('y (m)'); zlabel('error'); axis tight;
-f = gcf; colormap(f,ap.map.red_white_blue);
+quiver(msh.POS(:,1),msh.POS(:,2),out.field.Ex,out.field.Ey,'r')

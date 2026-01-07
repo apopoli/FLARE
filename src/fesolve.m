@@ -1,4 +1,4 @@
-function [out] = fesolve(msh,opts)
+function [out] = fesolve(msh,BC,opts)
 %FESOLVE Summary of this function goes here
 %   Detailed explanation goes here
 
@@ -13,16 +13,29 @@ tagbe = ed(:,3);
 %% BCs
 bcflag_e = zeros(length(edgeBound),1);
 bcval_e = zeros(length(edgeBound),1);
-
-for i=1:length(opts.tag_boundary)
-    ibe = find(tagbe==opts.tag_boundary(i));  % trova tutti i lati sul contorno con tag (physical group assegnato in gmsh)
+% DIRICHLET
+for i=1:length(BC.D.tag)
+    ibe = find(tagbe==BC.D.tag(i));  % trova tutti i lati sul contorno con tag (physical group assegnato in gmsh)
     if ~any(ibe)
         error('Controllare lati su contorno')
     end
-    % 1: Neumann 2: Dirichlet
-    bcflag_e(ibe) = 2 * ones(length(ibe),1);  % assegna il flag per la condizione al controno 
-    bcval_e(ibe) = 0 * ones(length(ibe),1);  % assegna il valore per la condizione al controno
+    % 2: Dirichlet
+    bcflag_e(ibe) = 2 * ones(length(ibe),1);  % assegna il flag per la condizione al contorono 
+    bcval_e(ibe) = BC.D.val(i) * ones(length(ibe),1);  % assegna il valore per la condizione al contorono
 end
+% NEUMANN
+for i=1:length(BC.N.tag)
+    ibe = find(tagbe==BC.N.tag(i));  % trova tutti i lati sul contorno con tag (physical group assegnato in gmsh)
+    if ~any(ibe)
+        error('Controllare lati su contorno')
+    end
+    % 1: Neumann
+    bcflag_e(ibe) = 1 * ones(length(ibe),1);  % assegna il flag per la condizione al contorono 
+    bcval_e(ibe) = BC.N.val(i) * ones(length(ibe),1);  % assegna il valore per la condizione al contorono
+end
+
+BC.bcflag_e = bcflag_e;
+BC.bcval_e = bcval_e;
 
 iregbe = ones(size(tagbe));
 
@@ -31,7 +44,7 @@ ProblemKind = opts.ProblemKind; % [Electrostatic][Magnetostatic][QMagnetostaticS
 
 switch ProblemKind
     case {'Electrostatic','Magnetostatic','QMagnetostaticSin','QMagnetostaticSin_LAPL'}
-        [out] = FEM2D00(opts, p, t, edgeBound, bcflag_e, bcval_e, ireg, iregbe, opts.materials, opts.source);
+        [out] = FEM2D00(msh, opts, p, t, edgeBound, BC, ireg, iregbe, opts.materials, opts.source);
     case {'MagTimeDependent'}
         switch opts.flag.decomp
             case (0)
