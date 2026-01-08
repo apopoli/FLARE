@@ -14,10 +14,10 @@ if any(idx == 0)
     missing = unique(tagbe(idx == 0));
     error('Tags %s on boundary not defined in BC.', mat2str(missing));
 end
-bcflag_e = flagsAll(idx);
-bcval_e  = valsAll(idx);
-BC.bcflag_e = bcflag_e;
-BC.bcval_e = bcval_e;
+BCflag_e = flagsAll(idx);
+BCval_e  = valsAll(idx);
+BC.BCflag_e = BCflag_e;
+BC.BCval_e = BCval_e;
 
 %% SOLVER CALL
 ProblemKind = opts.ProblemKind; % [Electrostatic][Magnetostatic][QMagnetostaticSin][MagTimeDependent]
@@ -36,12 +36,12 @@ switch ProblemKind
             case (0)
                 switch opts.flag.dt_auto
                     case (0)
-                        [out] = FEM2D00_t(ProblemKind, opts.time_array, opts.sv, p, t, edgeBound, bcflag_e, bcval_e, ireg, iregbe, opts.materials, opts.source);
+                        [out] = FEM2D00_t(ProblemKind, opts.time_array, opts.sv, p, t, edgeBound, BCflag_e, BCval_e, ireg, iregbe, opts.materials, opts.source);
                     case (1)
-                        [out] = FEM2D00_dt_auto(opts, p, t, edgeBound, bcflag_e, bcval_e, ireg, iregbe, opts.materials, opts.source);
+                        [out] = FEM2D00_dt_auto(opts, p, t, edgeBound, BCflag_e, BCval_e, ireg, iregbe, opts.materials, opts.source);
                 end
             case (1)
-                [out] = FEM2D00_t_decomp(opts, p, t, edgeBound, bcflag_e, bcval_e, ireg, iregbe, opts.materials, opts.source);
+                [out] = FEM2D00_t_decomp(opts, p, t, edgeBound, BCflag_e, BCval_e, ireg, iregbe, opts.materials, opts.source);
         end
 end
 

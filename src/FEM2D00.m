@@ -6,8 +6,10 @@ p = msh.POS(:,1:2);
 t = msh.TRIANGLES(:,1:3);
 ireg = msh.TRIANGLES(:,4);
 edgeBound = msh.LINES(:,1:2); % lati (di elemento) sul contorno
-
 ndom = length(unique(ireg)); % number of regions within the domain
+
+% BC for each node
+BCval_p = set_BCs_on_nodes(msh, BC);
 
 eps0 = 8.854187817e-12;
 mu0 = 4*pi*1.e-7;
@@ -17,18 +19,14 @@ nt = size(t,1); % number of triangles
 prop_e = zeros(nt,1);
 sigma = zeros(nt,1);
 
-% Field_e = zeros(nt,2);
-
-BCval_p = set_BCs_on_nodes(msh, BC);
-bcflag_e = BC.bcflag_e;
-
-EdgeNeumann = find(bcflag_e == 1);
-dp = p(edgeBound(EdgeNeumann,1),:) - p(edgeBound(EdgeNeumann,2),:);
+% Length of Neumann edges
+i_EdgeNeumann = find(BC.BCflag_e == 1);
+dp = p(edgeBound(i_EdgeNeumann,1),:) - p(edgeBound(i_EdgeNeumann,2),:);
 L = (dp(:,1).^2 + dp(:,2).^2).^0.5;
 
 % Indexes for BCs
 ii_BCflag_p_2 = find(BCval_p(:,2) == 2); % Dirichlet nodes indices (corresponds to ipc)
-ind_lin_p_2 = sub2ind([np np],ii_BCflag_p_2,ii_BCflag_p_2); % linear indexes of Dirichlet nodes, must be forced to 1 in Kg
+ind_lin_p_2 = sub2ind([np np],ii_BCflag_p_2,ii_BCflag_p_2); % linear indexes of Dirichlet nodes, must be forced to 1 in K
 
 % cell array with regions
 el_ireg = cell(ndom,1); % element indexes for each region
@@ -57,7 +55,7 @@ end
 tm.assembl_cell_array_reg = toc;
 
 tic
-[Kg, Area,gradN] = assembling_steady_state(opts.ProblemKind,p,t,prop_e(:),sigma(:),j_omega);
+[K, Area,gradN] = assembling_steady_state(opts.ProblemKind,p,t,prop_e(:),sigma(:),j_omega);
 tm.assembl_matrici_globali = toc;
 
 % aux vectors for sparse assembly
@@ -79,30 +77,30 @@ switch opts.ProblemKind
         prop_el = mu0;
 end
 prop_el = prop_el * 1/3*src.*Area;
-
 RHSg =  K_rhs * prop_el;
 
-% ---- Neumann BCs ----
-for k = 1:length(EdgeNeumann)
-    e  = EdgeNeumann(k);
+% Neumann BCs
+for k = 1:length(i_EdgeNeumann)
+    e  = i_EdgeNeumann(k);
     n1 = edgeBound(e,1);
     n2 = edgeBound(e,2);
 
-    g  = BC.bcval_e(e);
+    g  = BC.BCval_e(e);
     Le = L(k);
 
     RHSg(n1) = RHSg(n1) + g * Le / 2;
     RHSg(n2) = RHSg(n2) + g * Le / 2;
 end
 
-% ---- Dirichlet BCs ----
-Kg(ii_BCflag_p_2,:) = 0;
-Kg(ind_lin_p_2) = 1;
+% Dirichlet BCs
+K(ii_BCflag_p_2,:) = 0;
+K(ind_lin_p_2) = 1;
 RHSg(ii_BCflag_p_2) = BCval_p(ii_BCflag_p_2,3);
 
-phi = Kg\RHSg;
+% solve
+phi = K\RHSg;
 
-%% POST PROCESSING
+% POST PROCESSING
 % Mat_grdn_x e Mat_grdn_y using SPARSE
 gradN_x = squeeze(gradN(:,1,:));
 gradN_y = squeeze(gradN(:,2,:));
@@ -173,22 +171,8 @@ switch opts.ProblemKind
         scal.I = IntSource; % current in each region
 end
 
-% compute and draw field lines
-idx = find(BCval_p(:,2)==2 & BCval_p(:,3)==250);
-% start_pts = msh.POS(idx(1:10:end),1:2);
-start_pts = msh.POS(idx(50:10:100),1:2);
-
-lines = compute_fieldlines(msh, ...
-    field.Ex, field.Ey, start_pts);
-
-hold on
-for k = 1:length(lines)
-    if isempty(lines{k}), continue, end
-    plot(lines{k}.x, lines{k}.y, 'b', 'LineWidth',1.2)
-end
-axis equal
-
-% error('stop here');
+% output
+out.BCval_p = BCval_p;
 
 out.field = field;
 if (exist('scal','var'))
