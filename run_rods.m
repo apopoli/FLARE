@@ -35,16 +35,38 @@ f = gcf; colormap(f,ap.map.red_white_blue);
 BCval_p = out.BCval_p;
 idx = find(BCval_p(:,2)==2 & BCval_p(:,3)==250);
 % start_pts = msh.POS(idx(1:10:end),1:2);
-start_pts = msh.POS(idx(50:10:100),1:2);
+start_pts = msh.POS(idx(7:13),1:2); % msh.POS(idx(150:1:180),1:2)
 
 lines = compute_fieldlines(msh, ...
     out.field.Ex, out.field.Ey, start_pts);
 
-figure
-quiver(msh.POS(:,1),msh.POS(:,2),out.field.Ex,out.field.Ey,'r')
-hold on
+%% field lines_e
+BCval_p = out.BCval_p;
+idx = find(BCval_p(:,2)==2 & BCval_p(:,3)==250);
+% start_pts = msh.POS(idx(1:10:end),1:2);
+start_pts = msh.POS(idx(7:13),1:2);
+
+lines = compute_fieldlines_e(msh, ...
+    out.field_e.Ex, out.field_e.Ey, start_pts);
+
+
+%%
+figure;
+% Plot come patch 2D (z = 0)
+p = patch('Faces', msh.TRIANGLES(:,1:3), ...
+          'Vertices', [msh.POS(:,1:2), zeros(size(msh.POS,1),1)], ... % z=0
+          'FaceVertexCData', out.field.phi, ...
+          'FaceColor', 'interp', ...
+          'EdgeColor', 'w', ...
+          'CDataMapping', 'scaled');
+colorbar;
+view(2); axis equal tight;
+xlabel('x (m)'); ylabel('y (m)');
+f = gcf; colormap(f,ap.map.red_white_blue);
+
+hold on;
 for k = 1:length(lines)
-    if isempty(lines{k}), continue, end
-    plot(lines{k}.x, lines{k}.y, 'b', 'LineWidth',1.2)
+    if isempty(lines{k}), continue; end
+    plot(lines{k}.x, lines{k}.y, 'k-', 'LineWidth', 1); % bianco per contrasto
 end
-axis equal
+hold off;

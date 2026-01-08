@@ -120,7 +120,8 @@ for i = 1:ndom
     end
 end
 
-gradphi_e_x = Mat_grdn_x * phi;
+% gradiente per elemento (costante)
+gradphi_e_x = Mat_grdn_x * phi; 
 gradphi_e_y = Mat_grdn_y * phi;
 
 % repeat element quantities three times, for accumarray 
@@ -151,8 +152,10 @@ Jz_p(ips) = Jz_p(ips)./icounts(ips);
 switch opts.ProblemKind
     case 'Electrostatic'
         field.phi = phi; % electric potential
-        field.Ex = -gradphi_x; % electric field Ex
-        field.Ey = -gradphi_y; % electric field Ey
+        field.Ex = -gradphi_x; % nodal electric field Ex
+        field.Ey = -gradphi_y; % nodal electric field Ey
+        field_e.Ex = - gradphi_e_x; % element electric field Ex
+        field_e.Ey = - gradphi_e_y; % element electric field Ey
         field.Dx = -gradphi_prop_x*eps0; % electric induction Dx
         field.Dy = -gradphi_prop_y*eps0; % electric induction Dy      
     case 'Magnetostatic'
@@ -175,6 +178,7 @@ end
 out.BCval_p = BCval_p;
 
 out.field = field;
+out.field_e = field_e;
 if (exist('scal','var'))
     out.scal = scal;
 end
