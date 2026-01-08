@@ -2,50 +2,36 @@ function [out] = fesolve(msh,BC,opts)
 %FESOLVE Summary of this function goes here
 %   Detailed explanation goes here
 
-%% MESH
-p0 = msh.POS; p = p0(:,1:2);
-t0 = msh.TRIANGLES; t = t0(:,1:3);
-ireg = t0(:,4);
-ed = msh.LINES;
-edgeBound = ed(:,1:2); % lati (di elemento) sul contorno
-tagbe = ed(:,3);
+% Extract mesh info
+tagbe = msh.LINES(:,3);
 
-%% BCs
-bcflag_e = zeros(length(edgeBound),1);
-bcval_e = zeros(length(edgeBound),1);
-% DIRICHLET
-for i=1:length(BC.D.tag)
-    ibe = find(tagbe==BC.D.tag(i));  % trova tutti i lati sul contorno con tag (physical group assegnato in gmsh)
-    if ~any(ibe)
-        error('Controllare lati su contorno')
-    end
-    % 2: Dirichlet
-    bcflag_e(ibe) = 2 * ones(length(ibe),1);  % assegna il flag per la condizione al contorono 
-    bcval_e(ibe) = BC.D.val(i) * ones(length(ibe),1);  % assegna il valore per la condizione al contorono
+% Map each edge tag to flag/val
+tagsAll = [BC.D.tag, BC.N.tag];
+flagsAll = [2*ones(size(BC.D.tag)), 1*ones(size(BC.N.tag))];
+valsAll = [BC.D.val, BC.N.val];
+[~, idx] = ismember(tagbe, tagsAll);
+if any(idx == 0)
+    missing = unique(tagbe(idx == 0));
+    error('Tags %s on boundary not defined in BC.', mat2str(missing));
 end
-% NEUMANN
-for i=1:length(BC.N.tag)
-    ibe = find(tagbe==BC.N.tag(i));  % trova tutti i lati sul contorno con tag (physical group assegnato in gmsh)
-    if ~any(ibe)
-        error('Controllare lati su contorno')
-    end
-    % 1: Neumann
-    bcflag_e(ibe) = 1 * ones(length(ibe),1);  % assegna il flag per la condizione al contorono 
-    bcval_e(ibe) = BC.N.val(i) * ones(length(ibe),1);  % assegna il valore per la condizione al contorono
-end
-
+bcflag_e = flagsAll(idx);
+bcval_e  = valsAll(idx);
 BC.bcflag_e = bcflag_e;
 BC.bcval_e = bcval_e;
-
-iregbe = ones(size(tagbe));
 
 %% SOLVER CALL
 ProblemKind = opts.ProblemKind; % [Electrostatic][Magnetostatic][QMagnetostaticSin][MagTimeDependent]
 
 switch ProblemKind
     case {'Electrostatic','Magnetostatic','QMagnetostaticSin','QMagnetostaticSin_LAPL'}
-        [out] = FEM2D00(msh, opts, p, t, edgeBound, BC, ireg, iregbe, opts.materials, opts.source);
+        [out] = FEM2D00(msh, BC, opts);
     case {'MagTimeDependent'}
+        p = msh.POS(:,1:2);
+        t = msh.TRIANGLES(:,1:3);
+        ireg = msh.TRIANGLES(:,4);
+        edgeBound = msh.LINES(:,1:2); % lati (di elemento) sul contorno
+        tagbe = msh.LINES(:,3);
+        iregbe = ones(size(tagbe));
         switch opts.flag.decomp
             case (0)
                 switch opts.flag.dt_auto

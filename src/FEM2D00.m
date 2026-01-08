@@ -1,14 +1,18 @@
-function [out] = FEM2D00(msh, opts, p, tri, edgeBound, BC, ireg, iregbe, materials, source)
+function [out] = FEM2D00(msh, BC, opts)
 %FEM2D Finite element solution of div(prop(x,y) grad(phi)) = source(x,y)
 % material(id_phys_reg) = MaterialKind assigned to the region id_phys_reg
+
+p = msh.POS(:,1:2);
+t = msh.TRIANGLES(:,1:3);
+ireg = msh.TRIANGLES(:,4);
+edgeBound = msh.LINES(:,1:2); % lati (di elemento) sul contorno
 
 ndom = length(unique(ireg)); % number of regions within the domain
 
 eps0 = 8.854187817e-12;
 mu0 = 4*pi*1.e-7;
 np = size(p,1); % number of mesh points
-nt = size(tri,1); % number of triangles
-nbedges = size(edgeBound,1); % number (element) edges on the boundary
+nt = size(t,1); % number of triangles
 
 prop_e = zeros(nt,1);
 sigma = zeros(nt,1);
@@ -30,7 +34,7 @@ ind_lin_p_2 = sub2ind([np np],ii_BCflag_p_2,ii_BCflag_p_2); % linear indexes of 
 el_ireg = cell(ndom,1); % element indexes for each region
 tic
 for i = 1:ndom
-    PROPel = MatLib(materials(i)); % region properties
+    PROPel = MatLib(opts.materials(i)); % region properties
     el_ireg{i} = find(ireg==i); % elements in region
 
     switch opts.ProblemKind
@@ -53,18 +57,18 @@ end
 tm.assembl_cell_array_reg = toc;
 
 tic
-[Kg, Area,gradN] = assembling_steady_state(opts.ProblemKind,p,tri,prop_e(:),sigma(:),j_omega);
+[Kg, Area,gradN] = assembling_steady_state(opts.ProblemKind,p,t,prop_e(:),sigma(:),j_omega);
 tm.assembl_matrici_globali = toc;
 
 % aux vectors for sparse assembly
 ii_sp = repelem(1:nt,3); % 1 1 1 2 2 2 3 3 3 ...
-jj_sp = reshape(tri', [], 1); % rows of "tri" (vertexes of triangles)
+jj_sp = reshape(t', [], 1); % rows of "tri" (vertexes of triangles)
 tic
 K_rhs = sparse(jj_sp,ii_sp,1,np,nt);
 tm.assembly_matrice_aux_RHS = toc;
 
 % assembly RHS
-sorg = source().';
+sorg = opts.source().';
 src = sorg(ireg(:));  % element source term, based on element region
 switch opts.ProblemKind
     case "Electrostatic"
@@ -113,7 +117,7 @@ IntSource = zeros(ndom,1);
 for i = 1:ndom
     IntSource(i) = dot(src(el_ireg{i}),Area(el_ireg{i})); % integral source J0
     for j = 1:3
-        dA_dt = j_omega*phi(tri(el_ireg{i}));
+        dA_dt = j_omega*phi(t(el_ireg{i}));
         IntSource(i) = IntSource(i) - dot(sigma(el_ireg{i}),dA_dt.*Area(el_ireg{i})/3); % integral source dA/dt sum((sigma(el_ireg{i}).*dA_dt).* Area(el_ireg{i})/3); 
     end
 end
@@ -184,7 +188,7 @@ for k = 1:length(lines)
 end
 axis equal
 
-error('stop here');
+% error('stop here');
 
 out.field = field;
 if (exist('scal','var'))
