@@ -27,7 +27,7 @@ x = msh.POS(:,1); y = msh.POS(:,2); % get mesh coordinates
 %% field lines_e
 BCval_p = out.BCval_p;
 idx = find(BCval_p(:,2)==2 & BCval_p(:,3)==250);
-start_pts = msh.POS(idx(1:13),1:2)+1E-10; % start_pts = msh.POS(idx(1:10:end),1:2);
+start_pts = msh.POS(idx(2:13),1:2)+1E-10; % start_pts = msh.POS(idx(1:10:end),1:2);
 
 lines = compute_fieldlines(msh,out.field_e.Ex, out.field_e.Ey, start_pts);
 
