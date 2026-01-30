@@ -8,7 +8,7 @@ utils_FEM;
 mesh_rods_half; ndom = num_regions(msh);
 % BC (Dirichlet)
 BC.D.tag = [11,12];
-BC.D.val = [1,0]*250;
+BC.D.val = [1,0]*1;
 BC.N.tag = 13;
 BC.N.val = 0;
 % materials
@@ -26,7 +26,7 @@ x = msh.POS(:,1); y = msh.POS(:,2); % get mesh coordinates
 
 %% field lines_e
 BCval_p = out.BCval_p;
-idx = find(BCval_p(:,2)==2 & BCval_p(:,3)==250);
+idx = find(BCval_p(:,2)==2 & BCval_p(:,3)==1);
 start_pts = msh.POS(idx(2:13),1:2)+1E-10; % start_pts = msh.POS(idx(1:10:end),1:2);
 
 lines = compute_fieldlines(msh,out.field_e.Ex, out.field_e.Ey, start_pts);
@@ -50,3 +50,10 @@ for k = 1:length(lines)
     plot(lines{k}.x, lines{k}.y, 'k-', 'LineWidth', 1); % bianco per contrasto
 end
 hold off;
+
+figure
+trisurf(msh.TRIANGLES(:,1:3),msh.POS(:,1),msh.POS(:,2),out.field.phi,'edgecolor','none'); view(2); colorbar; axis equal;
+
+figure
+trisurf(msh.TRIANGLES(:,1:3),msh.POS(:,1),msh.POS(:,2),sqrt(out.field.Ex.^2+out.field.Ey.^2),'edgecolor','none'); view(2); colorbar; axis equal;
+field_unif_theory = 1/(0.006); % V/d
