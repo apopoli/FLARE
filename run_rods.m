@@ -62,7 +62,7 @@ field_unif_theory = 1/(0.006); % V/d
 %% field lines_e
 BCval_p = out.BCval_p;
 idx = find(BCval_p(:,2)==2 & BCval_p(:,3)==1);
-start_pts = msh.POS(idx(2:13),1:2)+1E-10; % o quello che usavi tu [2:13]
+start_pts = msh.POS(idx(:),1:2)+1E-10; % o quello che usavi tu [2:13]
 
 opts_fl.normalize = false;      % <--- QUI: campo fisico, NON normalizzato
 lines = compute_fieldlines(msh, out.field_e.Ex, out.field_e.Ey, start_pts, opts_fl);
@@ -79,7 +79,7 @@ kB    = 1.380649e-23;       % J/K
 Ngas  = P/(kB*Tgas);        % densità numerica [m^-3]
 
 % --- Dati BOLSIG+ per la miscela in questione ---
-bolsigFile = "04_out_Air.dat";   % cambia se usi un altro file BOLSIG
+bolsigFile = "11_out_He.dat";   % 04_out_Air
 B = read_Bolsig(bolsigFile);
 
 EN_grid   = B.Transp.E_N_Td;  % [Td]
