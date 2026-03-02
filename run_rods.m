@@ -103,7 +103,7 @@ has_root  = false(nLines,1);         % flag: breakdown trovato
 
 % Limiti di ricerca per Vb (puoi regolarli)
 Vmin = 0;           % sempre F(0) < 0 (integrale = 0)
-Vmax_global = 200e3;  % [V] tensione massima che sei disposto a considerare
+Vmax_global = 20e3;  % [V] tensione massima che sei disposto a considerare
 
 for k = 1:nLines
     % Coordinate lungo la linea
@@ -176,12 +176,12 @@ for k = 1:nLines
     if has_root(k)
         fprintf('Line %2d: Vb = %8.2f kV\n', k, Vb_line(k)*1e-3);
     else
-        fprintf('Line %2d: Vb > %8.2f kV (nessun breakdown trovato)\n', ...
+        fprintf('Line %2d: Vb > %8.3f kV (nessun breakdown trovato)\n', ...
                 k, Vmax_global*1e-3);
     end
 end
 if ~isnan(Vb_system)
-    fprintf('\nGlobal Breakdown ~ %.1f kV (min Vb_line)\n', Vb_system*1e-3);
+    fprintf('\nGlobal Breakdown ~ %.4f kV (min Vb_line)\n', Vb_system*1e-3);
 else
     fprintf('\nNo line is in breakdown until %.1f kV\n', Vmax_global*1e-3);
 end
