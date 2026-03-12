@@ -1,11 +1,23 @@
 clear variables
 close all
 
-%% facing rods
+% --- Parametri gas / breakdown ---
+P     = 0.1 * 101325;       % Pa  (esempio: 0.1 bar)
+Tgas  = 300;                % K
+gamma = 0.01;               % coeff. emissione secondaria
+kB    = 1.380649e-23;       % J/K
+Ngas  = P/(kB*Tgas);        % densità numerica [m^-3]
+
+% --- Dati BOLSIG+ per la miscela in questione ---
+bolsigFile = "11_out_He.dat";   % 04_out_Air
+
+% MESH
+mesh_rods_half_rsmall;
+
+% facing rods
 % before executing: gmsh .\mesh\mesh_rods_half.geo
 utils_FEM;
-% MESH
-mesh_rods_half; ndom = num_regions(msh);
+ndom = num_regions(msh);
 % BC (Dirichlet)
 BC.D.tag = [11,12];
 BC.D.val = [1,0]*1;
@@ -27,7 +39,7 @@ x = msh.POS(:,1); y = msh.POS(:,2); % get mesh coordinates
 %% field lines_e
 BCval_p = out.BCval_p;
 idx = find(BCval_p(:,2)==2 & BCval_p(:,3)==1);
-start_pts = msh.POS(idx(2:13),1:2)+1E-10; % start_pts = msh.POS(idx(1:10:end),1:2);
+start_pts = msh.POS(idx(:),1:2)+1E-10; % start_pts = msh.POS(idx(1:10:end),1:2);
 
 lines = compute_fieldlines(msh,out.field_e.Ex,out.field_e.Ey,start_pts);
 
@@ -42,7 +54,6 @@ p = patch('Faces', msh.TRIANGLES(:,1:3), ...
 colorbar;
 view(2); axis equal tight;
 xlabel('x (m)'); ylabel('y (m)');
-f = gcf; % colormap(f,ap.map.red_white_blue);
 
 hold on;
 for k = 1:length(lines)
@@ -59,27 +70,17 @@ trisurf(msh.TRIANGLES(:,1:3),msh.POS(:,1),msh.POS(:,2),sqrt(out.field.Ex.^2+out.
 xlabel('x (m)'); ylabel('y (m)'); title('|E| (V/m)')
 field_unif_theory = 1/(0.006); % V/d
 
-%% field lines_e
+% field lines_e
 BCval_p = out.BCval_p;
 idx = find(BCval_p(:,2)==2 & BCval_p(:,3)==1);
 start_pts = msh.POS(idx(:),1:2)+1E-10; % o quello che usavi tu [2:13]
 
-opts_fl.normalize = false;      % <--- QUI: campo fisico, NON normalizzato
+opts_fl.normalize = true;
 lines = compute_fieldlines(msh, out.field_e.Ex, out.field_e.Ey, start_pts, opts_fl);
 
-%% ==============================================================
+% ==============================================================
 %   Townsend non-uniforme: Vb per ogni linea di campo
 % ==============================================================
-
-% --- Parametri gas / breakdown ---
-P     = 0.1 * 101325;       % Pa  (esempio: 0.1 bar)
-Tgas  = 300;                % K
-gamma = 0.01;               % coeff. emissione secondaria
-kB    = 1.380649e-23;       % J/K
-Ngas  = P/(kB*Tgas);        % densità numerica [m^-3]
-
-% --- Dati BOLSIG+ per la miscela in questione ---
-bolsigFile = "11_out_He.dat";   % 04_out_Air
 B = read_Bolsig(bolsigFile);
 
 EN_grid   = B.Transp.E_N_Td;  % [Td]
@@ -164,19 +165,22 @@ for k = 1:nLines
     end
 end
 
-% Breakdown globale del sistema: minimo Vb tra le linee che vanno in breakdown
+% Breakdown globale del sistema
 if any(has_root)
-    Vb_system = min(Vb_line(has_root));
+    idx_valid = find(has_root);                 % indici delle linee valide
+    [Vb_system,i_min] = min(Vb_line(idx_valid)); 
+    idx_crit = idx_valid(i_min);                % indice reale della linea
 else
     Vb_system = NaN;
+    idx_crit = NaN;
 end
 
 fprintf('\n=== NON-UNIFORM BREAKDOWN ===\n');
 for k = 1:nLines
     if has_root(k)
-        fprintf('Line %2d: Vb = %8.2f kV\n', k, Vb_line(k)*1e-3);
+        fprintf('Line %3d: Vb = %8.5f kV\n', k, Vb_line(k)*1e-3);
     else
-        fprintf('Line %2d: Vb > %8.3f kV (nessun breakdown trovato)\n', ...
+        fprintf('Line %3d: Vb > %8.5f kV (nessun breakdown trovato)\n', ...
                 k, Vmax_global*1e-3);
     end
 end
@@ -207,7 +211,7 @@ function F = nonuniform_integral_minus_log(V, ds, E0_seg, Ngas, alphaN_fun, etaN
     alphaN = alphaN_fun(EN_Td);  % [m^2]
     etaN   = etaN_fun(EN_Td);    % [m^2]
 
-    % α_eff(x) = (αN - ηN) / N  → [1/m]
+    % α_eff(x) = (αN - ηN) * N  → [m^2]
     alpha_eff = (alphaN - etaN) * Ngas;
 
     % integrale di Townsend lungo la linea (somma a tratti)
@@ -217,40 +221,9 @@ function F = nonuniform_integral_minus_log(V, ds, E0_seg, Ngas, alphaN_fun, etaN
     F = I - logFactor;
 end
 
-%% ==============================================================
+% ==============================================================
 %   Plot linee a Vb_system: rosso se breakdown, nero altrimenti
 % ==============================================================
-
-if ~isnan(Vb_system)
-    V_plot = Vb_system;     % tensione per il plot
-else
-    V_plot = 30e3;          % ad esempio, se vuoi fissarne una
-end
-
-% Criterio a V_plot: ricalcolo integrale una sola volta per colore
-line_satisfies = false(nLines,1);
-
-for k = 1:nLines
-    if isempty(lines{k}), continue; end
-
-    X = lines{k}.x(:);
-    Y = lines{k}.y(:);
-    E0_line = lines{k}.E(:);
-    if numel(X) < 2 || all(E0_line == 0), continue; end
-
-    dX = diff(X);
-    dY = diff(Y);
-    ds = hypot(dX, dY);        % [m]
-    E0_seg = E0_line(1:end-1); % [V/m] per 1 V
-
-    F_here = nonuniform_integral_minus_log(V_plot, ds, E0_seg, ...
-                                           Ngas, alphaN_fun, etaN_fun, logFactor);
-    % integrale = F + logFactor
-    I_here = F_here + logFactor;
-    if I_here >= logFactor
-        line_satisfies(k) = true;
-    end
-end
 
 figure;
 patch('Faces', msh.TRIANGLES(:,1:3), ...
@@ -267,7 +240,8 @@ hold on;
 
 for k = 1:nLines
     if isempty(lines{k}), continue; end
-    if line_satisfies(k)
+
+    if k == idx_crit
         plot(lines{k}.x, lines{k}.y, 'r-', 'LineWidth', 2);
     else
         plot(lines{k}.x, lines{k}.y, 'k-', 'LineWidth', 1);
