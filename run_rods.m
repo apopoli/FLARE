@@ -2,14 +2,14 @@ clear variables
 close all
 
 % --- Parametri gas / breakdown ---
-P     = 1 * 101325;       % Pa  (esempio: 0.1 bar)
+P     = 0.1 * 101325;       % Pa  (esempio: 0.1 bar)
 Tgas  = 300;                % K
 gamma = 0.01;               % coeff. emissione secondaria
 kB    = 1.380649e-23;       % J/K
 Ngas  = P/(kB*Tgas);        % densità numerica [m^-3]
 
 % --- Dati BOLSIG+ per la miscela in questione ---
-bolsigFile = "11_out_He.dat";   % 04_out_Air
+bolsigFile = "04_out_Air.dat";   % 04_out_Air || 11_out_He
 
 % MESH
 mesh_rods_half_rsmall;
@@ -236,15 +236,33 @@ view(2); axis equal tight;
 xlabel('x (m)'); ylabel('y (m)');
 f = gcf; % colormap(f, ap.map.red_white_blue);
 hold on;
-
 for k = 1:nLines
     if isempty(lines{k}), continue; end
-
     if k == idx_crit
         plot(lines{k}.x, lines{k}.y, 'r-', 'LineWidth', 2);
     else
         plot(lines{k}.x, lines{k}.y, 'k-', 'LineWidth', 1);
     end
 end
+hold off;
 
+figure;
+patch('Faces', msh.TRIANGLES(:,1:3), ...
+      'Vertices', [msh.POS(:,1:2), zeros(size(msh.POS,1),1)], ...
+      'FaceVertexCData', Vb_line(idx_crit)*sqrt(out.field.Ex.^2+out.field.Ey.^2)/1E6, ...
+      'FaceColor', 'interp', ...
+      'EdgeColor', 'none', ...
+      'CDataMapping', 'scaled');
+colorbar;
+view(2); axis equal tight;
+xlabel('x (m)'); ylabel('y (m)');
+f = gcf; % colormap(f, ap.map.red_white_blue);
+hold on;
+for k = 1:nLines
+    if isempty(lines{k}), continue; end
+    if k == idx_crit
+        plot(lines{k}.x, lines{k}.y, 'r-', 'LineWidth', 2);
+    end
+end
+title('E (kV/mm)');
 hold off;
