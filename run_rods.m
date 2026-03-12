@@ -2,7 +2,7 @@ clear variables
 close all
 
 % --- Parametri gas / breakdown ---
-P     = 0.1 * 101325;       % Pa  (esempio: 0.1 bar)
+P     = 1 * 101325;       % Pa  (esempio: 0.1 bar)
 Tgas  = 300;                % K
 gamma = 0.01;               % coeff. emissione secondaria
 kB    = 1.380649e-23;       % J/K
@@ -75,8 +75,7 @@ BCval_p = out.BCval_p;
 idx = find(BCval_p(:,2)==2 & BCval_p(:,3)==1);
 start_pts = msh.POS(idx(:),1:2)+1E-10; % o quello che usavi tu [2:13]
 
-opts_fl.normalize = true;
-lines = compute_fieldlines(msh, out.field_e.Ex, out.field_e.Ey, start_pts, opts_fl);
+lines = compute_fieldlines(msh, out.field_e.Ex, out.field_e.Ey, start_pts, []);
 
 % ==============================================================
 %   Townsend non-uniforme: Vb per ogni linea di campo
